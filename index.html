@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Competitor Manager (Client-Side with Persistence)</title>
+  <title>Donner Competition Software</title>
   <style>
     body {
       font-family: sans-serif;
@@ -12,18 +12,19 @@
     #controls input {
       margin: 0 5px;
     }
+    button {
+      margin: 5px;
+    }
+    /* Update the table styles */
     table {
       border-collapse: collapse;
-      width: 100%;
-      margin-top: 10px;
+      width: 600px;          /* Set a fixed width */
+      margin: 10px;     /* Center the table horizontally with auto margins */
     }
     table, th, td {
       border: 1px solid #ccc;
       padding: 5px;
       text-align: left;
-    }
-    button {
-      margin: 5px;
     }
     .pairing {
       display: flex;
@@ -38,7 +39,8 @@
   </style>
 </head>
 <body>
-  <h1>Competitor Manager (Client-Side with Persistence)</h1>
+  <!-- The rest of your HTML remains unchanged -->
+  <h1>Donner Competition Software</h1>
   
   <div id="controls">
     <input type="text" id="name" placeholder="Name">
@@ -46,8 +48,11 @@
     <button id="addCompetitor">Add Competitor</button>
     <button id="removeCompetitor">Remove Competitor</button>
     <button id="sampleTeams">Sample Teams</button>
-    <button id="eraseCompetitors" disabled>Erase All Competitors</button>
+    <button id="saveRoster">Save Match</button>
+    <button id="loadRoster">Load Match</button>
+    <input type="file" id="loadRosterInput" style="display:none" accept=".csv">
     <button id="resetScores">Reset Scores</button>
+    <button id="eraseCompetitors" disabled>Reset All Data</button>
   </div>
   
   <h2>Competitors</h2>
@@ -74,7 +79,7 @@
     <!-- Pairings and winner selections will appear here -->
   </div>
   
-  <button id="finalizeRound">Finalize Round</button>
+  <button id="finalizeRound">Finalize: Generate Next Round</button>
   
   <script src="main.js"></script>
 </body>
