@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Competitor Manager (Client‑Side)</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    #controls input { margin: 0 5px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    table, th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
+    button { margin: 5px; }
+    .pairing { display: flex; flex-wrap: nowrap; justify-content: flex-start; align-items: center; margin-bottom: 15px; }
+    .pairing-text { margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Competitor Manager (Client‑Side)</h1>
+  
+  <div id="controls">
+    <input type="text" id="name" placeholder="Name">
+    <input type="text" id="team" placeholder="Team">
+    <button id="addCompetitor">Add Competitor</button>
+    <button id="removeCompetitor">Remove Competitor</button>
+    <button id="sampleTeams">Sample Teams</button>
+    <button id="eraseCompetitors" disabled>Erase All Competitors</button>
+    <button id="resetScores">Reset Scores</button>
+  </div>
+  
+  <h2>Competitors</h2>
+  <table id="competitorsTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Team</th>
+        <th>Wins</th>
+        <th>Losses</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Competitor rows will be inserted here -->
+    </tbody>
+  </table>
+  
+  <div>
+    <button id="beginCompetition">Begin Competition</button>
+  </div>
+  
+  <h2>Pairings</h2>
+  <div id="results">
+    <!-- Pairings and winner selection will appear here -->
+  </div>
+  
+  <button id="finalizeRound">Finalize Round</button>
+  
+  <script src="main.js"></script>
+</body>
+</html>
+
