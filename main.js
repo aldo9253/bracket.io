@@ -8,6 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const sampleButton = document.getElementById("sampleTeams");
   const eraseButton = document.getElementById("eraseCompetitors");
   const resetButton = document.getElementById("resetScores");
+  const saveRosterButton = document.getElementById("saveRoster");
+  const loadRosterButton = document.getElementById("loadRoster"); // New button
+  const loadRosterInput = document.getElementById("loadRosterInput"); // Hidden file input
   const beginCompetitionButton = document.getElementById("beginCompetition");
   const finalizeRoundButton = document.getElementById("finalizeRound");
   const competitorsTableBody = document.querySelector("#competitorsTable tbody");
@@ -21,6 +24,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   let currentPairings = [];
+  // Flag to indicate if a competition round has started.
+  let competitionStarted = false;
 
   // Save the competitors array to localStorage.
   function saveCompetitors() {
@@ -48,6 +53,19 @@ document.addEventListener("DOMContentLoaded", () => {
     sampleButton.disabled = competitors.length > 0;
     // Disable "Erase All Competitors" if the roster is empty.
     eraseButton.disabled = competitors.length === 0;
+    
+    // If the roster is empty, disable "Begin Competition" and mark competition as not started.
+    if (competitors.length === 0) {
+      beginCompetitionButton.disabled = true;
+      competitionStarted = false;
+    } else {
+      // If a competition hasn't been started, enable the Begin Competition button.
+      // (If a round is in progress, it remains disabled.)
+      beginCompetitionButton.disabled = competitionStarted;
+    }
+    
+    // The Finalize Round button should be active only when a competition round has started.
+    finalizeRoundButton.disabled = !competitionStarted;
 
     // Save updated data.
     saveCompetitors();
@@ -86,11 +104,15 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCompetitorsTable();
   }
 
-  // Erase all competitors.
+  // Erase all competitors, clear pairing list, and re-enable the "Begin Competition" button.
   function eraseAllCompetitors() {
     if (confirm("Are you sure you want to erase all competitors?")) {
       competitors = [];
       updateCompetitorsTable();
+      resultsDiv.innerHTML = "";                   // Clear the pairing list.
+      competitionStarted = false;                  // Reset competition flag.
+      beginCompetitionButton.disabled = true;      // Disable Begin Competition (roster is empty).
+      finalizeRoundButton.disabled = true;         // Disable Finalize Round.
     }
   }
 
@@ -101,21 +123,81 @@ document.addEventListener("DOMContentLoaded", () => {
       c.losses = 0;
     });
     updateCompetitorsTable();
-    // Re-enable the Begin Competition button.
-    beginCompetitionButton.disabled = false;
+    // Reset competition state.
+    competitionStarted = false;
+    beginCompetitionButton.disabled = competitors.length === 0;
+    finalizeRoundButton.disabled = true;
+  }
+
+  // Save the roster to a CSV file.
+  function saveRoster() {
+    if (competitors.length === 0) {
+      alert("No competitors to save.");
+      return;
+    }
+    let csvContent = "Name,Team,Wins,Losses\n";
+    competitors.forEach(comp => {
+      csvContent += `"${comp.name}","${comp.team}",${comp.wins},${comp.losses}\n`;
+    });
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const fileName = `roster_${new Date().toISOString().split("T")[0]}.csv`;
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", fileName);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert("Download not supported in this browser.");
+    }
+  }
+
+  // NEW: Load the roster from a CSV file.
+  function loadRoster(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const contents = e.target.result;
+      const lines = contents.split(/\r?\n/).filter(line => line.trim() !== "");
+      if (lines.length < 2) {
+        alert("Invalid CSV file.");
+        return;
+      }
+      // Assume the first line is the header and skip it.
+      const newCompetitors = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        // Naively split by commas and remove wrapping quotes.
+        const fields = line.split(",").map(s => s.replace(/^"|"$/g, '').trim());
+        if (fields.length < 4) continue;
+        const [name, team, wins, losses] = fields;
+        newCompetitors.push({
+          name: name,
+          team: team,
+          wins: parseInt(wins, 10) || 0,
+          losses: parseInt(losses, 10) || 0
+        });
+      }
+      competitors = newCompetitors;
+      updateCompetitorsTable();
+    };
+    reader.onerror = function() {
+      alert("Error reading file.");
+    };
+    reader.readAsText(file);
   }
 
   // Pairing logic: pairs competitors based on wins, losses, and team differences.
   function pairCompetitors() {
-    // Filter competitors with fewer than 2 losses.
     let validCompetitors = competitors.filter(c => c.losses < 2);
-    // Sort by wins (descending) and losses (ascending).
     validCompetitors.sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins;
       return a.losses - b.losses;
     });
-
-    // Separate into zero-loss and one-loss groups.
     let zeroLoss = validCompetitors.filter(c => c.losses === 0);
     let oneLoss = validCompetitors.filter(c => c.losses === 1);
     let pairs = [];
@@ -160,12 +242,10 @@ document.addEventListener("DOMContentLoaded", () => {
       usedNames.add(zeroUnmatched[0]);
       usedNames.add(oneUnmatched[0]);
     } else {
-      // Give unmatched zero-loss competitors a BYE.
       zeroUnmatched.forEach(name => {
         pairs.push({ comp1: name, comp2: "BYE" });
         usedNames.add(name);
       });
-      // Also, assign a BYE for any remaining unmatched competitor.
       let unmatched = validCompetitors.filter(c => !usedNames.has(c.name)).map(c => c.name);
       unmatched.forEach(name => {
         pairs.push({ comp1: name, comp2: "BYE" });
@@ -229,6 +309,8 @@ document.addEventListener("DOMContentLoaded", () => {
       displayPairings();
     } else {
       alert("Competition finished!");
+      competitionStarted = false;
+      finalizeRoundButton.disabled = true;
     }
   }
 
@@ -252,17 +334,32 @@ document.addEventListener("DOMContentLoaded", () => {
   
   resetButton.addEventListener("click", () => {
     resetScores();
-    beginCompetitionButton.disabled = false;
+    competitionStarted = false;
+    beginCompetitionButton.disabled = competitors.length === 0;
+    finalizeRoundButton.disabled = true;
   });
   
+  saveRosterButton.addEventListener("click", saveRoster);
+  
+  // When the "Load Roster" button is clicked, trigger the hidden file input.
+  loadRosterButton.addEventListener("click", () => {
+    loadRosterInput.click();
+  });
+  
+  // When a file is selected, load the roster.
+  loadRosterInput.addEventListener("change", loadRoster);
+  
   beginCompetitionButton.addEventListener("click", () => {
+    if (competitors.length === 0) return;
+    competitionStarted = true;
     beginCompetitionButton.disabled = true;
+    finalizeRoundButton.disabled = false;
     displayPairings();
   });
   
   finalizeRoundButton.addEventListener("click", finalizeRound);
   
-  // Initial table update (which also saves data from localStorage).
+  // Initial table update.
   updateCompetitorsTable();
 });
 
