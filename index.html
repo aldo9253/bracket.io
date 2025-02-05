@@ -3,19 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Competitor Manager (Client‑Side)</title>
+  <title>Competitor Manager (Client-Side with Persistence)</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    #controls input { margin: 0 5px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    table, th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
-    button { margin: 5px; }
-    .pairing { display: flex; flex-wrap: nowrap; justify-content: flex-start; align-items: center; margin-bottom: 15px; }
-    .pairing-text { margin-right: 10px; }
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    #controls input {
+      margin: 0 5px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+      padding: 5px;
+      text-align: left;
+    }
+    button {
+      margin: 5px;
+    }
+    .pairing {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .pairing-text {
+      margin-right: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>Competitor Manager (Client‑Side)</h1>
+  <h1>Competitor Manager (Client-Side with Persistence)</h1>
   
   <div id="controls">
     <input type="text" id="name" placeholder="Name">
@@ -48,7 +71,7 @@
   
   <h2>Pairings</h2>
   <div id="results">
-    <!-- Pairings and winner selection will appear here -->
+    <!-- Pairings and winner selections will appear here -->
   </div>
   
   <button id="finalizeRound">Finalize Round</button>

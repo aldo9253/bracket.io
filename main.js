@@ -13,15 +13,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const competitorsTableBody = document.querySelector("#competitorsTable tbody");
   const resultsDiv = document.getElementById("results");
 
-  // In-memory competitor data
-  let competitors = []; // Each competitor is { name, team, wins, losses }
+  // In-memory competitor data.
+  // Load from localStorage if available.
+  let competitors = [];
+  if (localStorage.getItem("competitors")) {
+    competitors = JSON.parse(localStorage.getItem("competitors"));
+  }
+  
   let currentPairings = [];
 
-  // --- Helper Functions ---
+  // Save the competitors array to localStorage.
+  function saveCompetitors() {
+    localStorage.setItem("competitors", JSON.stringify(competitors));
+  }
 
+  // Update the competitors table and manage button states.
   function updateCompetitorsTable() {
-    // Sort competitors:
-    // Fewer losses come first; if losses are equal, more wins come first.
+    // Sort competitors: fewer losses come first; if equal, more wins appear higher.
     competitors.sort((a, b) => {
       if (a.losses !== b.losses) return a.losses - b.losses;
       return b.wins - a.wins;
@@ -36,13 +44,16 @@ document.addEventListener("DOMContentLoaded", () => {
                        <td>${comp.losses}</td>`;
       competitorsTableBody.appendChild(row);
     });
-
-    // Disable Sample Teams if there is already at least one competitor.
+    // Disable "Sample Teams" if there is already at least one competitor.
     sampleButton.disabled = competitors.length > 0;
-    // Disable Erase All Competitors if the roster is empty.
+    // Disable "Erase All Competitors" if the roster is empty.
     eraseButton.disabled = competitors.length === 0;
+
+    // Save updated data.
+    saveCompetitors();
   }
 
+  // Add a competitor to the list.
   function addCompetitor(name, team) {
     if (!name) return alert("Name is required");
     if (competitors.some(c => c.name === name)) return alert("Competitor already exists");
@@ -50,6 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCompetitorsTable();
   }
 
+  // Remove a competitor by name.
   function removeCompetitor(name) {
     if (!name) return alert("Enter a name to remove");
     const index = competitors.findIndex(c => c.name === name);
@@ -58,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCompetitorsTable();
   }
 
+  // Add sample teams.
   function addSampleTeams() {
     const sampleCompetitors = [
       { name: "Alex (1)", team: "Team 1", wins: 0, losses: 0 },
@@ -73,6 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCompetitorsTable();
   }
 
+  // Erase all competitors.
   function eraseAllCompetitors() {
     if (confirm("Are you sure you want to erase all competitors?")) {
       competitors = [];
@@ -80,27 +94,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Reset scores for all competitors.
   function resetScores() {
     competitors.forEach(c => {
       c.wins = 0;
       c.losses = 0;
     });
     updateCompetitorsTable();
-    // Re-enable the Begin Competition button when resetting scores.
+    // Re-enable the Begin Competition button.
     beginCompetitionButton.disabled = false;
   }
 
-  // Pairing logic (similar to your original approach)
+  // Pairing logic: pairs competitors based on wins, losses, and team differences.
   function pairCompetitors() {
-    // Filter competitors with fewer than 2 losses
+    // Filter competitors with fewer than 2 losses.
     let validCompetitors = competitors.filter(c => c.losses < 2);
-    // Sort by wins (descending) and losses (ascending)
+    // Sort by wins (descending) and losses (ascending).
     validCompetitors.sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins;
       return a.losses - b.losses;
     });
 
-    // Separate into zero-loss and one-loss groups
+    // Separate into zero-loss and one-loss groups.
     let zeroLoss = validCompetitors.filter(c => c.losses === 0);
     let oneLoss = validCompetitors.filter(c => c.losses === 1);
     let pairs = [];
@@ -145,12 +160,12 @@ document.addEventListener("DOMContentLoaded", () => {
       usedNames.add(zeroUnmatched[0]);
       usedNames.add(oneUnmatched[0]);
     } else {
-      // Give unmatched zero-loss competitors a BYE
+      // Give unmatched zero-loss competitors a BYE.
       zeroUnmatched.forEach(name => {
         pairs.push({ comp1: name, comp2: "BYE" });
         usedNames.add(name);
       });
-      // Also, if any competitor remains unmatched, assign a BYE
+      // Also, assign a BYE for any remaining unmatched competitor.
       let unmatched = validCompetitors.filter(c => !usedNames.has(c.name)).map(c => c.name);
       unmatched.forEach(name => {
         pairs.push({ comp1: name, comp2: "BYE" });
@@ -159,19 +174,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return pairs;
   }
 
+  // Display the pairings and winner selection dropdowns.
   function displayPairings() {
     resultsDiv.innerHTML = "";
     currentPairings = pairCompetitors();
     currentPairings.forEach((pair, index) => {
       const pairingDiv = document.createElement("div");
       pairingDiv.className = "pairing";
-      // Left: pairing text
+
       const pairingText = document.createElement("div");
       pairingText.className = "pairing-text";
       pairingText.innerText = `${pair.comp1} vs ${pair.comp2}`;
       pairingDiv.appendChild(pairingText);
 
-      // Right: dropdown for winner or BYE label
       const pairingControl = document.createElement("div");
       if (pair.comp2 !== "BYE") {
         const select = document.createElement("select");
@@ -195,24 +210,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Finalize the round by updating wins and losses based on the selected winners.
   function finalizeRound() {
-    // Process each pairing's winner
     const selects = resultsDiv.querySelectorAll("select");
     selects.forEach((select, index) => {
       const pair = currentPairings[index];
       const winner = select.value;
       if (!winner) return;
       const loser = winner === pair.comp1 ? pair.comp2 : pair.comp1;
-      // If there's a BYE, skip updating scores.
       if (loser === "BYE") return;
-      // Update scores for winner and loser.
       competitors.forEach(comp => {
         if (comp.name === winner) comp.wins += 1;
         if (comp.name === loser) comp.losses += 1;
       });
     });
     updateCompetitorsTable();
-    // If more than one competitor remains (losses < 2), generate new pairings.
     if (competitors.filter(c => c.losses < 2).length > 1) {
       displayPairings();
     } else {
@@ -221,7 +233,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Event Listeners ---
-
   addButton.addEventListener("click", () => {
     const name = nameInput.value.trim();
     const team = teamInput.value.trim();
@@ -237,22 +248,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   sampleButton.addEventListener("click", addSampleTeams);
-
   eraseButton.addEventListener("click", eraseAllCompetitors);
-
+  
   resetButton.addEventListener("click", () => {
     resetScores();
     beginCompetitionButton.disabled = false;
   });
-
+  
   beginCompetitionButton.addEventListener("click", () => {
     beginCompetitionButton.disabled = true;
     displayPairings();
   });
-
+  
   finalizeRoundButton.addEventListener("click", finalizeRound);
-
-  // Initial table update
+  
+  // Initial table update (which also saves data from localStorage).
   updateCompetitorsTable();
 });
 
