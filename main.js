@@ -9,12 +9,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const eraseButton = document.getElementById("eraseCompetitors");
   const resetButton = document.getElementById("resetScores");
   const saveRosterButton = document.getElementById("saveRoster");
-  const loadRosterButton = document.getElementById("loadRoster"); // New button
-  const loadRosterInput = document.getElementById("loadRosterInput"); // Hidden file input
+  const loadRosterButton = document.getElementById("loadRoster");
+  const loadRosterInput = document.getElementById("loadRosterInput");
   const beginCompetitionButton = document.getElementById("beginCompetition");
   const finalizeRoundButton = document.getElementById("finalizeRound");
   const competitorsTableBody = document.querySelector("#competitorsTable tbody");
   const resultsDiv = document.getElementById("results");
+  // NEW: References for the Calculate Team Points feature.
+  const calcTeamPointsButton = document.getElementById("calcTeamPoints");
+  const teamPointsDisplay = document.getElementById("teamPointsDisplay");
 
   // In-memory competitor data.
   // Load from localStorage if available.
@@ -60,7 +63,6 @@ document.addEventListener("DOMContentLoaded", () => {
       competitionStarted = false;
     } else {
       // If a competition hasn't been started, enable the Begin Competition button.
-      // (If a round is in progress, it remains disabled.)
       beginCompetitionButton.disabled = competitionStarted;
     }
     
@@ -155,128 +157,146 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-			// NEW: Load the roster from a CSV file.
-			function loadRoster(event) {
-				const file = event.target.files[0];
-				if (!file) return;
-				const reader = new FileReader();
-				reader.onload = function(e) {
-					const contents = e.target.result;
-					const lines = contents.split(/\r?\n/).filter(line => line.trim() !== "");
-					if (lines.length < 2) {
-						alert("Invalid CSV file.");
-						return;
-					}
-					// Assume the first line is the header and skip it.
-					const newCompetitors = [];
-					for (let i = 1; i < lines.length; i++) {
-						const line = lines[i];
-						// Naively split by commas and remove wrapping quotes.
-						const fields = line.split(",").map(s => s.replace(/^"|"$/g, '').trim());
-						if (fields.length < 4) continue;
-						const [name, team, wins, losses] = fields;
-						newCompetitors.push({
-							name: name,
-							team: team,
-							wins: parseInt(wins, 10) || 0,
-							losses: parseInt(losses, 10) || 0
-						});
-					}
-					competitors = newCompetitors;
-					updateCompetitorsTable();
-				};
-				reader.onerror = function() {
-					alert("Error reading file.");
-				};
-				reader.readAsText(file);
-			}
+  // Load the roster from a CSV file.
+  function loadRoster(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const contents = e.target.result;
+      const lines = contents.split(/\r?\n/).filter(line => line.trim() !== "");
+      if (lines.length < 2) {
+        alert("Invalid CSV file.");
+        return;
+      }
+      // Assume the first line is the header and skip it.
+      const newCompetitors = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        const fields = line.split(",").map(s => s.replace(/^"|"$/g, '').trim());
+        if (fields.length < 4) continue;
+        const [name, team, wins, losses] = fields;
+        newCompetitors.push({
+          name: name,
+          team: team,
+          wins: parseInt(wins, 10) || 0,
+          losses: parseInt(losses, 10) || 0
+        });
+      }
+      competitors = newCompetitors;
+      updateCompetitorsTable();
+    };
+    reader.onerror = function() {
+      alert("Error reading file.");
+    };
+    reader.readAsText(file);
+  }
 
-		// New optimized pairing functions
-
-		// getOptimizedPairs: recursively finds the best pairing for a given group
-		function getOptimizedPairs(group) {
-			let bestPairing = null;
-			let bestPenalty = Infinity;
-
-			function search(remaining, currentPairs, currentPenalty) {
-				if (remaining.length === 0) {
-					if (currentPenalty < bestPenalty) {
-						bestPairing = currentPairs.slice();
-						bestPenalty = currentPenalty;
-					}
-					return;
-				}
-				// Take the first competitor from the remaining list.
-				let first = remaining[0];
-				for (let i = 1; i < remaining.length; i++) {
-					let second = remaining[i];
-					// Penalty: 1 if they are on the same team, 0 otherwise.
-					let penaltyIncrement = (first.team === second.team) ? 1 : 0;
-					// Prune if the current penalty plus this increment is already worse.
-					if (currentPenalty + penaltyIncrement >= bestPenalty) continue;
-					let newPairs = currentPairs.slice();
-					newPairs.push({ comp1: first.name, comp2: second.name });
-					// Create a new remaining list without first and second.
-					let newRemaining = remaining.slice(1);
-					newRemaining.splice(i - 1, 1); // remove second (adjusted index)
-					search(newRemaining, newPairs, currentPenalty + penaltyIncrement);
-				}
-			}
-			search(group, [], 0);
-			return { pairs: bestPairing, penalty: bestPenalty };
-		}
-
-		// pairGroup: if the group has an even number of competitors, returns the best pairing;
-		// if odd, it tries every competitor as a potential bye candidate.
-		function pairGroup(group) {
-			if (group.length === 0) return [];
-			if (group.length % 2 === 0) {
-				let result = getOptimizedPairs(group);
-				return result.pairs || [];
-			} else {
-				let bestPairs = null;
-				let bestPenalty = Infinity;
-				let bestByeIndex = -1;
-				// Try each competitor as the one who gets the bye.
-				for (let i = 0; i < group.length; i++) {
-					let subGroup = group.slice(0, i).concat(group.slice(i + 1));
-					let result = getOptimizedPairs(subGroup);
-					if (result.penalty < bestPenalty) {
-						bestPenalty = result.penalty;
-						bestPairs = result.pairs;
-						bestByeIndex = i;
-					}
-				}
-				if (!bestPairs) bestPairs = [];
-				// Append the bye pairing for the candidate left out.
-				bestPairs.push({ comp1: group[bestByeIndex].name, comp2: "BYE" });
-				return bestPairs;
-			}
-		}
-
-		// pairCompetitors: splits eligible competitors into groups by losses,
-		// then uses the optimized pairing functions for each group.
-		function pairCompetitors() {
-			// Filter competitors with fewer than 2 losses.
-			let validCompetitors = competitors.filter(c => c.losses < 2);
-			// Sort by wins (descending) then losses (ascending).
-			validCompetitors.sort((a, b) => {
-				if (b.wins !== a.wins) return b.wins - a.wins;
-				return a.losses - b.losses;
-			});
-			// Split into groups: zero-loss and one-loss.
-			let zeroLoss = validCompetitors.filter(c => c.losses === 0);
-			let oneLoss = validCompetitors.filter(c => c.losses === 1);
-
-			let pairs = [];
-			let zeroPairs = pairGroup(zeroLoss);
-			let onePairs = pairGroup(oneLoss);
-			if (zeroPairs) pairs = pairs.concat(zeroPairs);
-			if (onePairs) pairs = pairs.concat(onePairs);
-			return pairs;
-		}
+  // NEW: Calculate team points by summing wins for each team.
+  function calcTeamPoints() {
+    let teamTotals = {};
+    competitors.forEach(comp => {
+      // Only count competitors with a non-empty team name.
+      if (comp.team && comp.team.trim() !== "") {
+        if (!teamTotals[comp.team]) {
+          teamTotals[comp.team] = 0;
+        }
+        teamTotals[comp.team] += comp.wins;
+      }
+    });
+    let output = "<h3>Team Points</h3><ul>";
+    for (let team in teamTotals) {
+      output += `<li>${team}: ${teamTotals[team]} points</li>`;
+    }
+    output += "</ul>";
+    teamPointsDisplay.innerHTML = output;
+  }
 
 
+// New optimized pairing functions
+
+// getOptimizedPairs: recursively finds the best pairing for a given group
+function getOptimizedPairs(group) {
+  let bestPairing = null;
+  let bestPenalty = Infinity;
+
+  function search(remaining, currentPairs, currentPenalty) {
+    if (remaining.length === 0) {
+      if (currentPenalty < bestPenalty) {
+        bestPairing = currentPairs.slice();
+        bestPenalty = currentPenalty;
+      }
+      return;
+    }
+    // Take the first competitor from the remaining list.
+    let first = remaining[0];
+    for (let i = 1; i < remaining.length; i++) {
+      let second = remaining[i];
+      // Penalty: 1 if they are on the same team, 0 otherwise.
+      let penaltyIncrement = (first.team === second.team) ? 1 : 0;
+      // Prune if the current penalty plus this increment is already worse.
+      if (currentPenalty + penaltyIncrement >= bestPenalty) continue;
+      let newPairs = currentPairs.slice();
+      newPairs.push({ comp1: first.name, comp2: second.name });
+      // Create a new remaining list without first and second.
+      let newRemaining = remaining.slice(1);
+      newRemaining.splice(i - 1, 1); // remove second (adjusted index)
+      search(newRemaining, newPairs, currentPenalty + penaltyIncrement);
+    }
+  }
+  search(group, [], 0);
+  return { pairs: bestPairing, penalty: bestPenalty };
+}
+
+// pairGroup: if the group has an even number of competitors, returns the best pairing;
+// if odd, it tries every competitor as a potential bye candidate.
+function pairGroup(group) {
+  if (group.length === 0) return [];
+  if (group.length % 2 === 0) {
+    let result = getOptimizedPairs(group);
+    return result.pairs || [];
+  } else {
+    let bestPairs = null;
+    let bestPenalty = Infinity;
+    let bestByeIndex = -1;
+    // Try each competitor as the one who gets the bye.
+    for (let i = 0; i < group.length; i++) {
+      let subGroup = group.slice(0, i).concat(group.slice(i + 1));
+      let result = getOptimizedPairs(subGroup);
+      if (result.penalty < bestPenalty) {
+        bestPenalty = result.penalty;
+        bestPairs = result.pairs;
+        bestByeIndex = i;
+      }
+    }
+    if (!bestPairs) bestPairs = [];
+    // Append the bye pairing for the candidate left out.
+    bestPairs.push({ comp1: group[bestByeIndex].name, comp2: "BYE" });
+    return bestPairs;
+  }
+}
+
+// pairCompetitors: splits eligible competitors into groups by losses,
+// then uses the optimized pairing functions for each group.
+function pairCompetitors() {
+  // Filter competitors with fewer than 2 losses.
+  let validCompetitors = competitors.filter(c => c.losses < 2);
+  // Sort by wins (descending) then losses (ascending).
+  validCompetitors.sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    return a.losses - b.losses;
+  });
+  // Split into groups: zero-loss and one-loss.
+  let zeroLoss = validCompetitors.filter(c => c.losses === 0);
+  let oneLoss = validCompetitors.filter(c => c.losses === 1);
+
+  let pairs = [];
+  let zeroPairs = pairGroup(zeroLoss);
+  let onePairs = pairGroup(oneLoss);
+  if (zeroPairs) pairs = pairs.concat(zeroPairs);
+  if (onePairs) pairs = pairs.concat(onePairs);
+  return pairs;
+}
 
 
   // Display the pairings and winner selection dropdowns.
@@ -383,6 +403,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   
   finalizeRoundButton.addEventListener("click", finalizeRound);
+  
+  // NEW: When the "Calculate Team Points" button is clicked, compute and display team totals.
+  calcTeamPointsButton.addEventListener("click", calcTeamPoints);
   
   // Initial table update.
   updateCompetitorsTable();
