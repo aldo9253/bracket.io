@@ -9,8 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const eraseButton = document.getElementById("eraseCompetitors");
   const resetButton = document.getElementById("resetScores");
   const saveRosterButton = document.getElementById("saveRoster");
-  const loadRosterButton = document.getElementById("loadRoster");
-  const loadRosterInput = document.getElementById("loadRosterInput");
+  const loadRosterButton = document.getElementById("loadRoster"); // New button
+  const loadRosterInput = document.getElementById("loadRosterInput"); // Hidden file input
   const beginCompetitionButton = document.getElementById("beginCompetition");
   const finalizeRoundButton = document.getElementById("finalizeRound");
   const competitorsTableBody = document.querySelector("#competitorsTable tbody");
@@ -63,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
       competitionStarted = false;
     } else {
       // If a competition hasn't been started, enable the Begin Competition button.
+      // (If a round is in progress, it remains disabled.)
       beginCompetitionButton.disabled = competitionStarted;
     }
     
@@ -157,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Load the roster from a CSV file.
+  // NEW: Load the roster from a CSV file.
   function loadRoster(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -173,6 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const newCompetitors = [];
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
+        // Naively split by commas and remove wrapping quotes.
         const fields = line.split(",").map(s => s.replace(/^"|"$/g, '').trim());
         if (fields.length < 4) continue;
         const [name, team, wins, losses] = fields;
@@ -191,29 +193,6 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     reader.readAsText(file);
   }
-
-  // NEW: Calculate team points by summing wins for each team.
-  function calcTeamPoints() {
-    let teamTotals = {};
-    competitors.forEach(comp => {
-      // Only count competitors with a non-empty team name.
-      if (comp.team && comp.team.trim() !== "") {
-        if (!teamTotals[comp.team]) {
-          teamTotals[comp.team] = 0;
-        }
-        teamTotals[comp.team] += comp.wins;
-      }
-    });
-    let output = "<h3>Team Points</h3><ul>";
-    for (let team in teamTotals) {
-      output += `<li>${team}: ${teamTotals[team]} points</li>`;
-    }
-    output += "</ul>";
-    teamPointsDisplay.innerHTML = output;
-  }
-
-
-// New optimized pairing functions
 
 // getOptimizedPairs: recursively finds the best pairing for a given group
 function getOptimizedPairs(group) {
@@ -247,7 +226,6 @@ function getOptimizedPairs(group) {
   search(group, [], 0);
   return { pairs: bestPairing, penalty: bestPenalty };
 }
-
 // pairGroup: if the group has an even number of competitors, returns the best pairing;
 // if odd, it tries every competitor as a potential bye candidate.
 function pairGroup(group) {
@@ -278,6 +256,7 @@ function pairGroup(group) {
 
 // pairCompetitors: splits eligible competitors into groups by losses,
 // then uses the optimized pairing functions for each group.
+/*
 function pairCompetitors() {
   // Filter competitors with fewer than 2 losses.
   let validCompetitors = competitors.filter(c => c.losses < 2);
@@ -296,9 +275,72 @@ function pairCompetitors() {
   if (zeroPairs) pairs = pairs.concat(zeroPairs);
   if (onePairs) pairs = pairs.concat(onePairs);
   return pairs;
+} */
+function pairCompetitors() {
+  // Filter competitors with fewer than 2 losses.
+  let validCompetitors = competitors.filter(c => c.losses < 2);
+  // Sort by wins (descending) then losses (ascending).
+  validCompetitors.sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    return a.losses - b.losses;
+  });
+  // Split into groups: zero-loss and one-loss.
+  let zeroLoss = validCompetitors.filter(c => c.losses === 0);
+  let oneLoss = validCompetitors.filter(c => c.losses === 1);
+
+  // **Special Case:** If there is exactly one competitor with 0 losses
+  // and one competitor with 1 loss, pair them together.
+  if (zeroLoss.length === 1 && oneLoss.length === 1) {
+    return [{ comp1: zeroLoss[0].name, comp2: oneLoss[0].name }];
+  }
+
+  let pairs = [];
+  let zeroPairs = pairGroup(zeroLoss);
+  let onePairs = pairGroup(oneLoss);
+  if (zeroPairs) pairs = pairs.concat(zeroPairs);
+  if (onePairs) pairs = pairs.concat(onePairs);
+  return pairs;
 }
 
 
+// Display
+function displayPairings() {
+  resultsDiv.innerHTML = "";
+  currentPairings = pairCompetitors();
+  currentPairings.forEach((pair, index) => {
+    const pairingDiv = document.createElement("div");
+    pairingDiv.className = "pairing";
+    // Assign a data-index so we can later retrieve the select for this pairing.
+    pairingDiv.dataset.index = index;
+
+    const pairingText = document.createElement("div");
+    pairingText.className = "pairing-text";
+    pairingText.innerText = `${pair.comp1} vs ${pair.comp2}`;
+    pairingDiv.appendChild(pairingText);
+
+    const pairingControl = document.createElement("div");
+    if (pair.comp2 !== "BYE") {
+      const select = document.createElement("select");
+      // (Optionally, you can also set data-index on the select, but we'll use the pairingDiv.)
+      const defaultOption = document.createElement("option");
+      defaultOption.text = "Select Winner";
+      defaultOption.value = "";
+      select.appendChild(defaultOption);
+      [pair.comp1, pair.comp2].forEach(name => {
+        const option = document.createElement("option");
+        option.text = name;
+        option.value = name;
+        select.appendChild(option);
+      });
+      pairingControl.appendChild(select);
+    }
+    pairingDiv.appendChild(pairingControl);
+    resultsDiv.appendChild(pairingDiv);
+  });
+}
+
+
+/*
   // Display the pairings and winner selection dropdowns.
   function displayPairings() {
     resultsDiv.innerHTML = "";
@@ -333,8 +375,9 @@ function pairCompetitors() {
       pairingDiv.appendChild(pairingControl);
       resultsDiv.appendChild(pairingDiv);
     });
-  }
+  } */
 
+/*
   // Finalize the round by updating wins and losses based on the selected winners.
   function finalizeRound() {
     const selects = resultsDiv.querySelectorAll("select");
@@ -357,7 +400,69 @@ function pairCompetitors() {
       competitionStarted = false;
       finalizeRoundButton.disabled = true;
     }
+  } */
+
+function finalizeRound() {
+  // Loop over each pairing by index.
+  for (let i = 0; i < currentPairings.length; i++) {
+    const pair = currentPairings[i];
+    // If either competitor is a bye, skip processing this pairing.
+    //if (pair.comp1 === "BYE" || pair.comp2 === "BYE") {
+      //continue;
+    //}
+    
+    // Retrieve the corresponding pairing element from the resultsDiv.
+    // (Assumes the order of children in resultsDiv matches currentPairings.)
+    const pairingDiv = resultsDiv.children[i];
+    if (!pairingDiv) continue;
+    
+    // Get the select element from this pairing container.
+    const select = pairingDiv.querySelector("select");
+    if (!select) continue;
+    
+    const winner = select.value;
+    if (!winner) continue; // Skip if no winner was selected.
+    
+    const loser = (winner === pair.comp1) ? pair.comp2 : pair.comp1;
+    
+    // Update wins and losses.
+    competitors.forEach(comp => {
+      if (comp.name === winner) comp.wins += 1;
+      if (comp.name === loser) comp.losses += 1;
+    });
   }
+  
+  updateCompetitorsTable();
+  
+  // If more than one competitor remains eligible (losses < 2), generate new pairings.
+  if (competitors.filter(c => c.losses < 2).length > 1) {
+    displayPairings();
+  } else {
+    alert("Competition finished!");
+    competitionStarted = false;
+    finalizeRoundButton.disabled = true;
+  }
+}
+
+// NEW: Calculate team points by summing wins for each team.
+function calcTeamPoints() {
+	let teamTotals = {};
+	competitors.forEach(comp => {
+	  // Only count competitors with a non-empty team name.
+	  if (comp.team && comp.team.trim() !== "") {
+		if (!teamTotals[comp.team]) {
+		  teamTotals[comp.team] = 0;
+		}
+		teamTotals[comp.team] += comp.wins;
+	  }
+	});
+	let output = "<h3>Team Points</h3><ul>";
+	for (let team in teamTotals) {
+	  output += `<li>${team}: ${teamTotals[team]} points</li>`;
+	}
+	output += "</ul>";
+	teamPointsDisplay.innerHTML = output;
+}
 
   // --- Event Listeners ---
   addButton.addEventListener("click", () => {
@@ -406,7 +511,7 @@ function pairCompetitors() {
   
   // NEW: When the "Calculate Team Points" button is clicked, compute and display team totals.
   calcTeamPointsButton.addEventListener("click", calcTeamPoints);
-  
+
   // Initial table update.
   updateCompetitorsTable();
 });
