@@ -155,104 +155,129 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // NEW: Load the roster from a CSV file.
-  function loadRoster(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const contents = e.target.result;
-      const lines = contents.split(/\r?\n/).filter(line => line.trim() !== "");
-      if (lines.length < 2) {
-        alert("Invalid CSV file.");
-        return;
-      }
-      // Assume the first line is the header and skip it.
-      const newCompetitors = [];
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        // Naively split by commas and remove wrapping quotes.
-        const fields = line.split(",").map(s => s.replace(/^"|"$/g, '').trim());
-        if (fields.length < 4) continue;
-        const [name, team, wins, losses] = fields;
-        newCompetitors.push({
-          name: name,
-          team: team,
-          wins: parseInt(wins, 10) || 0,
-          losses: parseInt(losses, 10) || 0
-        });
-      }
-      competitors = newCompetitors;
-      updateCompetitorsTable();
-    };
-    reader.onerror = function() {
-      alert("Error reading file.");
-    };
-    reader.readAsText(file);
-  }
+			// NEW: Load the roster from a CSV file.
+			function loadRoster(event) {
+				const file = event.target.files[0];
+				if (!file) return;
+				const reader = new FileReader();
+				reader.onload = function(e) {
+					const contents = e.target.result;
+					const lines = contents.split(/\r?\n/).filter(line => line.trim() !== "");
+					if (lines.length < 2) {
+						alert("Invalid CSV file.");
+						return;
+					}
+					// Assume the first line is the header and skip it.
+					const newCompetitors = [];
+					for (let i = 1; i < lines.length; i++) {
+						const line = lines[i];
+						// Naively split by commas and remove wrapping quotes.
+						const fields = line.split(",").map(s => s.replace(/^"|"$/g, '').trim());
+						if (fields.length < 4) continue;
+						const [name, team, wins, losses] = fields;
+						newCompetitors.push({
+							name: name,
+							team: team,
+							wins: parseInt(wins, 10) || 0,
+							losses: parseInt(losses, 10) || 0
+						});
+					}
+					competitors = newCompetitors;
+					updateCompetitorsTable();
+				};
+				reader.onerror = function() {
+					alert("Error reading file.");
+				};
+				reader.readAsText(file);
+			}
 
-  // Pairing logic: pairs competitors based on wins, losses, and team differences.
-  function pairCompetitors() {
-    let validCompetitors = competitors.filter(c => c.losses < 2);
-    validCompetitors.sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      return a.losses - b.losses;
-    });
-    let zeroLoss = validCompetitors.filter(c => c.losses === 0);
-    let oneLoss = validCompetitors.filter(c => c.losses === 1);
-    let pairs = [];
-    let usedNames = new Set();
+		// New optimized pairing functions
 
-    function pairWithinGroup(group) {
-      let localPairs = [];
-      let localUsed = new Set();
-      for (let i = 0; i < group.length; i++) {
-        const comp = group[i];
-        if (localUsed.has(comp.name)) continue;
-        let bestMatch = null;
-        for (let j = 0; j < group.length; j++) {
-          if (i === j) continue;
-          const potential = group[j];
-          if (localUsed.has(potential.name)) continue;
-          if (comp.team !== potential.team) {
-            bestMatch = potential;
-            break;
-          }
-          if (!bestMatch) bestMatch = potential;
-        }
-        if (bestMatch) {
-          localPairs.push({ comp1: comp.name, comp2: bestMatch.name });
-          localUsed.add(comp.name);
-          localUsed.add(bestMatch.name);
-        }
-      }
-      return { pairs: localPairs, used: localUsed };
-    }
+		// getOptimizedPairs: recursively finds the best pairing for a given group
+		function getOptimizedPairs(group) {
+			let bestPairing = null;
+			let bestPenalty = Infinity;
 
-    const zeroResult = pairWithinGroup(zeroLoss);
-    const oneResult = pairWithinGroup(oneLoss);
-    pairs = pairs.concat(zeroResult.pairs, oneResult.pairs);
-    usedNames = new Set([...zeroResult.used, ...oneResult.used]);
+			function search(remaining, currentPairs, currentPenalty) {
+				if (remaining.length === 0) {
+					if (currentPenalty < bestPenalty) {
+						bestPairing = currentPairs.slice();
+						bestPenalty = currentPenalty;
+					}
+					return;
+				}
+				// Take the first competitor from the remaining list.
+				let first = remaining[0];
+				for (let i = 1; i < remaining.length; i++) {
+					let second = remaining[i];
+					// Penalty: 1 if they are on the same team, 0 otherwise.
+					let penaltyIncrement = (first.team === second.team) ? 1 : 0;
+					// Prune if the current penalty plus this increment is already worse.
+					if (currentPenalty + penaltyIncrement >= bestPenalty) continue;
+					let newPairs = currentPairs.slice();
+					newPairs.push({ comp1: first.name, comp2: second.name });
+					// Create a new remaining list without first and second.
+					let newRemaining = remaining.slice(1);
+					newRemaining.splice(i - 1, 1); // remove second (adjusted index)
+					search(newRemaining, newPairs, currentPenalty + penaltyIncrement);
+				}
+			}
+			search(group, [], 0);
+			return { pairs: bestPairing, penalty: bestPenalty };
+		}
 
-    let zeroUnmatched = zeroLoss.filter(c => !usedNames.has(c.name)).map(c => c.name);
-    let oneUnmatched = oneLoss.filter(c => !usedNames.has(c.name)).map(c => c.name);
+		// pairGroup: if the group has an even number of competitors, returns the best pairing;
+		// if odd, it tries every competitor as a potential bye candidate.
+		function pairGroup(group) {
+			if (group.length === 0) return [];
+			if (group.length % 2 === 0) {
+				let result = getOptimizedPairs(group);
+				return result.pairs || [];
+			} else {
+				let bestPairs = null;
+				let bestPenalty = Infinity;
+				let bestByeIndex = -1;
+				// Try each competitor as the one who gets the bye.
+				for (let i = 0; i < group.length; i++) {
+					let subGroup = group.slice(0, i).concat(group.slice(i + 1));
+					let result = getOptimizedPairs(subGroup);
+					if (result.penalty < bestPenalty) {
+						bestPenalty = result.penalty;
+						bestPairs = result.pairs;
+						bestByeIndex = i;
+					}
+				}
+				if (!bestPairs) bestPairs = [];
+				// Append the bye pairing for the candidate left out.
+				bestPairs.push({ comp1: group[bestByeIndex].name, comp2: "BYE" });
+				return bestPairs;
+			}
+		}
 
-    if (zeroUnmatched.length === 1 && oneUnmatched.length === 1 && usedNames.size === 0) {
-      pairs.push({ comp1: zeroUnmatched[0], comp2: oneUnmatched[0] });
-      usedNames.add(zeroUnmatched[0]);
-      usedNames.add(oneUnmatched[0]);
-    } else {
-      zeroUnmatched.forEach(name => {
-        pairs.push({ comp1: name, comp2: "BYE" });
-        usedNames.add(name);
-      });
-      let unmatched = validCompetitors.filter(c => !usedNames.has(c.name)).map(c => c.name);
-      unmatched.forEach(name => {
-        pairs.push({ comp1: name, comp2: "BYE" });
-      });
-    }
-    return pairs;
-  }
+		// pairCompetitors: splits eligible competitors into groups by losses,
+		// then uses the optimized pairing functions for each group.
+		function pairCompetitors() {
+			// Filter competitors with fewer than 2 losses.
+			let validCompetitors = competitors.filter(c => c.losses < 2);
+			// Sort by wins (descending) then losses (ascending).
+			validCompetitors.sort((a, b) => {
+				if (b.wins !== a.wins) return b.wins - a.wins;
+				return a.losses - b.losses;
+			});
+			// Split into groups: zero-loss and one-loss.
+			let zeroLoss = validCompetitors.filter(c => c.losses === 0);
+			let oneLoss = validCompetitors.filter(c => c.losses === 1);
+
+			let pairs = [];
+			let zeroPairs = pairGroup(zeroLoss);
+			let onePairs = pairGroup(oneLoss);
+			if (zeroPairs) pairs = pairs.concat(zeroPairs);
+			if (onePairs) pairs = pairs.concat(onePairs);
+			return pairs;
+		}
+
+
+
 
   // Display the pairings and winner selection dropdowns.
   function displayPairings() {
