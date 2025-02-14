@@ -254,41 +254,36 @@ function pairGroup(group) {
   }
 }
 
+// Helper function: Fisher–Yates shuffle.
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
 // pairCompetitors: splits eligible competitors into groups by losses,
 // then uses the optimized pairing functions for each group.
-/*
 function pairCompetitors() {
   // Filter competitors with fewer than 2 losses.
   let validCompetitors = competitors.filter(c => c.losses < 2);
+
+  // If it's the first round (all scores 0), shuffle the validCompetitors array.
+  if (validCompetitors.every(c => c.wins === 0 && c.losses === 0)) {
+    shuffleArray(validCompetitors);
+  }
+
   // Sort by wins (descending) then losses (ascending).
   validCompetitors.sort((a, b) => {
     if (b.wins !== a.wins) return b.wins - a.wins;
     return a.losses - b.losses;
   });
+
   // Split into groups: zero-loss and one-loss.
   let zeroLoss = validCompetitors.filter(c => c.losses === 0);
   let oneLoss = validCompetitors.filter(c => c.losses === 1);
 
-  let pairs = [];
-  let zeroPairs = pairGroup(zeroLoss);
-  let onePairs = pairGroup(oneLoss);
-  if (zeroPairs) pairs = pairs.concat(zeroPairs);
-  if (onePairs) pairs = pairs.concat(onePairs);
-  return pairs;
-} */
-function pairCompetitors() {
-  // Filter competitors with fewer than 2 losses.
-  let validCompetitors = competitors.filter(c => c.losses < 2);
-  // Sort by wins (descending) then losses (ascending).
-  validCompetitors.sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    return a.losses - b.losses;
-  });
-  // Split into groups: zero-loss and one-loss.
-  let zeroLoss = validCompetitors.filter(c => c.losses === 0);
-  let oneLoss = validCompetitors.filter(c => c.losses === 1);
-
-  // **Special Case:** If there is exactly one competitor with 0 losses
+  // Special Case: If there is exactly one competitor with 0 losses
   // and one competitor with 1 loss, pair them together.
   if (zeroLoss.length === 1 && oneLoss.length === 1) {
     return [{ comp1: zeroLoss[0].name, comp2: oneLoss[0].name }];
