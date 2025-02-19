@@ -490,7 +490,7 @@ function calcTeamPoints() {
 		teamTotals[comp.team] += (comp.wins - comp.losses);
 	  }
 	});
-	let output = "<h3>Team Points</h3><ul>";
+	let output = "<h3> Team Points: Sum of (Wins - Losses) </h3><ul>";
 	for (let team in teamTotals) {
 	  output += `<li>${team}: ${teamTotals[team]} points</li>`;
 	}
