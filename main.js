@@ -119,7 +119,7 @@ function addSampleTeams() {
   let sampleCompetitors = [];
   
   let team_num = 2
-  let comp_num = 100
+  let comp_num = 10
   
   // Generate 8 competitors for each of three teams.
   for (let team = 1; team <= team_num; team++) {
