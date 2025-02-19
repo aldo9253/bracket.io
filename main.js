@@ -247,31 +247,47 @@ function shuffleArray(array) {
   }
 }
 
-// Greedy pairing within a group.
-// Assumes the group is sorted by wins descending.
 function greedyPairGroup(group) {
+  let byeCandidate = null;
+  
+  // If the group has more than one competitor and an odd number, remove the competitor with the highest wins.
+  if (group.length > 1 && group.length % 2 !== 0) {
+    // Create a sorted copy (ascending by wins).
+    let sortedGroup = group.slice().sort((a, b) => a.wins - b.wins);
+    // The competitor with the highest wins is at the end.
+    byeCandidate = sortedGroup[sortedGroup.length - 1];
+    // Remove the bye candidate from the original group.
+    group = group.filter(c => c.name !== byeCandidate.name);
+  }
+  
   let pairs = [];
-  let remaining = group.slice(); // copy the group
+  let remaining = group.slice(); // copy the (possibly modified) group
 
+  // Greedy pairing: always remove the first competitor and pair with the first available non-teammate.
   while (remaining.length > 1) {
-    // Remove the first competitor.
     let competitor = remaining.shift();
-    // Try to find the first competitor who is not on the same team.
     let candidateIndex = remaining.findIndex(c => c.team !== competitor.team);
     if (candidateIndex === -1) {
-      // If all remaining competitors are on the same team, simply take the first one.
+      // If everyone remaining is on the same team, just take the first candidate.
       candidateIndex = 0;
     }
     let candidate = remaining.splice(candidateIndex, 1)[0];
     pairs.push({ comp1: competitor.name, comp2: candidate.name });
   }
 
-  // If one competitor remains unpaired, assign a BYE.
+  // If one competitor remains (and no bye candidate was chosen), assign a bye.
   if (remaining.length === 1) {
     pairs.push({ comp1: remaining[0].name, comp2: "BYE" });
   }
+  
+  // If we selected a bye candidate earlier, add their bye pairing.
+  if (byeCandidate) {
+    pairs.push({ comp1: byeCandidate.name, comp2: "BYE" });
+  }
+  
   return pairs;
 }
+
 
 // pairCompetitors: filters eligible competitors, shuffles if it's the first round,
 // groups them by loss count, and pairs within each group using a greedy algorithm.
@@ -319,6 +335,10 @@ function pairCompetitors() {
 function displayPairings() {
   resultsDiv.innerHTML = "";
   currentPairings = pairCompetitors();
+  
+  // shuffler here
+  shuffleArray(currentPairings);
+  
   currentPairings.forEach((pair, index) => {
     const pairingDiv = document.createElement("div");
     pairingDiv.className = "pairing";
@@ -465,7 +485,8 @@ function calcTeamPoints() {
 		if (!teamTotals[comp.team]) {
 		  teamTotals[comp.team] = 0;
 		}
-		teamTotals[comp.team] += comp.wins;
+		//teamTotals[comp.team] += comp.wins;
+		teamTotals[comp.team] += (comp.wins - comp.losses);
 	  }
 	});
 	let output = "<h3>Team Points</h3><ul>";
@@ -474,7 +495,7 @@ function calcTeamPoints() {
 	}
 	output += "</ul>";
 	teamPointsDisplay.innerHTML = output;
-}
+}  // endcalcTeampoints
 
   // --- Event Listeners ---
   addButton.addEventListener("click", () => {
