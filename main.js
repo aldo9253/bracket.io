@@ -1,4 +1,12 @@
-// main.js
+// Alex Doner
+// Feb 18 2025
+// This now uses the 'greedySort' method. 
+//   Works for many many competitors and does a good job preventing teammate matchups. 
+// Currently, the logic pairs those with the same number of wins. 
+//   I think it might be better to pair those with the lowest number of wins. 
+//   This point is more subtle and can be debated. 
+
+
 document.addEventListener("DOMContentLoaded", () => {
   // UI element references
   const nameInput = document.getElementById("name");
@@ -91,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCompetitorsTable();
   }
 
-  // Add sample teams.
+/*  // Add sample teams.
   function addSampleTeams() {
     const sampleCompetitors = [
       { name: "Alex (1)", team: "Team 1", wins: 0, losses: 0 },
@@ -105,7 +113,43 @@ document.addEventListener("DOMContentLoaded", () => {
     ];
     competitors = competitors.concat(sampleCompetitors);
     updateCompetitorsTable();
+  } */
+  
+function addSampleTeams() {
+  let sampleCompetitors = [];
+  
+  let team_num = 2
+  let comp_num = 8
+  
+  // Generate 8 competitors for each of three teams.
+  for (let team = 1; team <= team_num; team++) {
+    for (let i = 1; i <= comp_num; i++) {
+      // Competitor number calculation: for team 1: 1-8, team 2: 9-16, team 3: 17-24.
+      let competitorNumber = ((team - 1) * comp_num) + i;
+      sampleCompetitors.push({
+        name: `Competitor ${competitorNumber} (${team})`,
+        team: `Team ${team}`,
+        wins: 0,
+        losses: 0
+      });
+    }
   }
+  
+  // Generate 8 competitors without a team.
+  for (let i = 1; i <= comp_num; i++) {
+    // Numbers 25 to 32.
+    sampleCompetitors.push({
+      name: `Competitor ${(team_num*comp_num) + i}`,
+      team: "",  // No team
+      wins: 0,
+      losses: 0
+    });
+  }
+  
+  competitors = competitors.concat(sampleCompetitors);
+  updateCompetitorsTable();
+}
+
 
   // Erase all competitors, clear pairing list, and re-enable the "Begin Competition" button.
   function eraseAllCompetitors() {
@@ -194,65 +238,6 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsText(file);
   }
 
-// getOptimizedPairs: recursively finds the best pairing for a given group
-function getOptimizedPairs(group) {
-  let bestPairing = null;
-  let bestPenalty = Infinity;
-
-  function search(remaining, currentPairs, currentPenalty) {
-    if (remaining.length === 0) {
-      if (currentPenalty < bestPenalty) {
-        bestPairing = currentPairs.slice();
-        bestPenalty = currentPenalty;
-      }
-      return;
-    }
-    // Take the first competitor from the remaining list.
-    let first = remaining[0];
-    for (let i = 1; i < remaining.length; i++) {
-      let second = remaining[i];
-      // Penalty: 1 if they are on the same team, 0 otherwise.
-      let penaltyIncrement = (first.team === second.team) ? 1 : 0;
-      // Prune if the current penalty plus this increment is already worse.
-      if (currentPenalty + penaltyIncrement >= bestPenalty) continue;
-      let newPairs = currentPairs.slice();
-      newPairs.push({ comp1: first.name, comp2: second.name });
-      // Create a new remaining list without first and second.
-      let newRemaining = remaining.slice(1);
-      newRemaining.splice(i - 1, 1); // remove second (adjusted index)
-      search(newRemaining, newPairs, currentPenalty + penaltyIncrement);
-    }
-  }
-  search(group, [], 0);
-  return { pairs: bestPairing, penalty: bestPenalty };
-}
-// pairGroup: if the group has an even number of competitors, returns the best pairing;
-// if odd, it tries every competitor as a potential bye candidate.
-function pairGroup(group) {
-  if (group.length === 0) return [];
-  if (group.length % 2 === 0) {
-    let result = getOptimizedPairs(group);
-    return result.pairs || [];
-  } else {
-    let bestPairs = null;
-    let bestPenalty = Infinity;
-    let bestByeIndex = -1;
-    // Try each competitor as the one who gets the bye.
-    for (let i = 0; i < group.length; i++) {
-      let subGroup = group.slice(0, i).concat(group.slice(i + 1));
-      let result = getOptimizedPairs(subGroup);
-      if (result.penalty < bestPenalty) {
-        bestPenalty = result.penalty;
-        bestPairs = result.pairs;
-        bestByeIndex = i;
-      }
-    }
-    if (!bestPairs) bestPairs = [];
-    // Append the bye pairing for the candidate left out.
-    bestPairs.push({ comp1: group[bestByeIndex].name, comp2: "BYE" });
-    return bestPairs;
-  }
-}
 
 // Helper function: Fisher–Yates shuffle.
 function shuffleArray(array) {
@@ -262,13 +247,39 @@ function shuffleArray(array) {
   }
 }
 
-// pairCompetitors: splits eligible competitors into groups by losses,
-// then uses the optimized pairing functions for each group.
+// Greedy pairing within a group.
+// Assumes the group is sorted by wins descending.
+function greedyPairGroup(group) {
+  let pairs = [];
+  let remaining = group.slice(); // copy the group
+
+  while (remaining.length > 1) {
+    // Remove the first competitor.
+    let competitor = remaining.shift();
+    // Try to find the first competitor who is not on the same team.
+    let candidateIndex = remaining.findIndex(c => c.team !== competitor.team);
+    if (candidateIndex === -1) {
+      // If all remaining competitors are on the same team, simply take the first one.
+      candidateIndex = 0;
+    }
+    let candidate = remaining.splice(candidateIndex, 1)[0];
+    pairs.push({ comp1: competitor.name, comp2: candidate.name });
+  }
+
+  // If one competitor remains unpaired, assign a BYE.
+  if (remaining.length === 1) {
+    pairs.push({ comp1: remaining[0].name, comp2: "BYE" });
+  }
+  return pairs;
+}
+
+// pairCompetitors: filters eligible competitors, shuffles if it's the first round,
+// groups them by loss count, and pairs within each group using a greedy algorithm.
 function pairCompetitors() {
   // Filter competitors with fewer than 2 losses.
   let validCompetitors = competitors.filter(c => c.losses < 2);
 
-  // If it's the first round (all scores 0), shuffle the validCompetitors array.
+  // If it's the first round (all scores 0), shuffle to reduce repetition.
   if (validCompetitors.every(c => c.wins === 0 && c.losses === 0)) {
     shuffleArray(validCompetitors);
   }
@@ -279,21 +290,27 @@ function pairCompetitors() {
     return a.losses - b.losses;
   });
 
-  // Split into groups: zero-loss and one-loss.
-  let zeroLoss = validCompetitors.filter(c => c.losses === 0);
-  let oneLoss = validCompetitors.filter(c => c.losses === 1);
+  // Group competitors by loss count.
+  let groups = {};
+  validCompetitors.forEach(comp => {
+    if (!groups[comp.losses]) groups[comp.losses] = [];
+    groups[comp.losses].push(comp);
+  });
 
-  // Special Case: If there is exactly one competitor with 0 losses
-  // and one competitor with 1 loss, pair them together.
+  // Special Case: If there is exactly one competitor with 0 losses and one with 1 loss, pair them.
+  let zeroLoss = groups[0] || [];
+  let oneLoss = groups[1] || [];
   if (zeroLoss.length === 1 && oneLoss.length === 1) {
     return [{ comp1: zeroLoss[0].name, comp2: oneLoss[0].name }];
   }
 
   let pairs = [];
-  let zeroPairs = pairGroup(zeroLoss);
-  let onePairs = pairGroup(oneLoss);
-  if (zeroPairs) pairs = pairs.concat(zeroPairs);
-  if (onePairs) pairs = pairs.concat(onePairs);
+  // Process each loss group in increasing order.
+  Object.keys(groups).sort((a, b) => a - b).forEach(loss => {
+    let group = groups[loss];
+    let groupPairs = greedyPairGroup(group);
+    pairs = pairs.concat(groupPairs);
+  });
   return pairs;
 }
 
