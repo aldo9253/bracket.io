@@ -465,6 +465,7 @@ function finalizeRound() {
   }
   
   updateCompetitorsTable();
+  calcTeamPoints();
   
   // If more than one competitor remains eligible (losses < 2), generate new pairings.
   if (competitors.filter(c => c.losses < 2).length > 1) {
