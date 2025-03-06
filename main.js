@@ -169,6 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
       competitors = [];
       updateCompetitorsTable();
       resultsDiv.innerHTML = "";
+      teamPointsDisplay.innerHTML = "";
       competitionStarted = false;
       beginCompetitionButton.disabled = true;
       finalizeRoundButton.disabled = true;
@@ -183,6 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
           c.losses = 0;
         });
         updateCompetitorsTable();
+        teamPointsDisplay.innerHTML = "";
         resultsDiv.innerHTML = "";
         competitionStarted = false;
         beginCompetitionButton.disabled = competitors.length === 0;
@@ -365,7 +367,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Right column: Unlock button.
       const unlockButton = document.createElement("button");
       unlockButton.className = "unlock-button";
-      unlockButton.innerText = "Unlock";
+      unlockButton.innerText = "Reset";
       if (pair.comp2 !== "BYE") {
         unlockButton.disabled = true;
       } else {
@@ -424,7 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
         teamTotals[comp.team] += (comp.wins - comp.losses);
       }
     });
-    let output = "<h3>Team Points (Wins-Losses)</h3><ul>";
+    let output = "<h3>Team Points (Sum of Wins-Losses)</h3><ul>";
     for (let team in teamTotals) {
       output += `<li>${team}: ${teamTotals[team]} points</li>`;
     }
