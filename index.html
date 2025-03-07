@@ -8,18 +8,20 @@
     body {
       font-family: sans-serif;
       margin: 20px;
+	  max-width: 1500px;
     }
     .title-section {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start; /* aligns content to the top */
+	  width: 100%;
+	  max-width: 1500px;
+      aspect-ratio: 3/1;
       background-image: url("background_crop.jpg"); /* Path to your image file */
-      background-size: contain; /*975px 300px;     /* Adjusts the image to cover the entire container */
+      background-size: contain;/*975px 300px;     /* Adjusts the image to cover the entire container */
       background-repeat: no-repeat;
       background-position: top left;
-      padding: 150px;              /* Adjust padding as needed */
-      color: white;               /* Ensure text is readable */
-      text-align: top left;
+	  padding: 10px 10px; 
+	  margin:  1px;
+	  color: white;
+	  text-align: center;
     }
     #controls input {
       margin: 0 5px;
@@ -66,10 +68,11 @@
 <body>
   <!-- The rest of your HTML remains unchanged -->
   <!-- h1>Donner Competition Software: Double Elimination!</h1 -->
-  <div class="title-section">  </div>
+  <div class="title-section">  
+    <h1>Donner Competition Software: Double Elimination!</h1>
+  </div>
   
   <div id="controls">
-    <h1>Donner Competition Software: Double Elimination!</h1>
     <input type="text" id="name" placeholder="Name">
     <input type="text" id="team" placeholder="Team">
     <button id="addCompetitor">Add Competitor</button>
