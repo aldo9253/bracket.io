@@ -11,17 +11,17 @@
 	  max-width: 1500px;
     }
     .title-section {
-	width: 100%;
-	max-width: 1500px;
-	aspect-ratio: 3/1;
-	background-image: url("background_crop.jpg"); /* Path to your image file */
-	background-size: contain;/*975px 300px;     /* Adjusts the image to cover the entire container */
-	background-repeat: no-repeat;
-	background-position: top left;
-	padding: 1px 1px 1px 1px; 
-	margin:  1px 1px 1px 1px;
-	color: white;
-	text-align: center;
+	  width: 100%;
+	  max-width: 1500px;
+      aspect-ratio: 3/1;
+      background-image: url("background_crop.jpg"); /* Path to your image file */
+      background-size: contain;/*975px 300px;     /* Adjusts the image to cover the entire container */
+      background-repeat: no-repeat;
+      background-position: top left;
+	  padding: 1px 1px 1px 1px; 
+	  margin:  1px 1px 1px 1px;
+	  color: white;
+	  text-align: center;
     }
     #controls input {
       margin: 0 5px;
@@ -40,6 +40,26 @@
       padding: 5px;
       text-align: left;
     }
+	.content-container {
+		display: flex;
+		gap: 20px
+		margin-bottom: 20px;
+		align-items: flex-start;
+	}
+	.roster-container {
+	}
+	.info-container{
+	  flex-grow: 0;
+	  height: auto; 
+	  min-width: 200px;
+	  background-color: #f9f9f9;
+	  padding: 10px;
+	  border: 1px solid #ccc;
+	  margin: 50px;
+	}
+	.info-container h2 {
+	  margin-top: 0;
+	}
     .pairing {
       display: flex;
       flex-direction: row;
@@ -57,10 +77,12 @@
     .unlock-button {
       margin-left: 5px;
     }
-
-    /* Apply a light grey background to every even row in the competitors table */
     #competitorsTable tbody tr:nth-child(even) {
     background-color: #f2f2f2;
+	#diagnostics {
+	  font-size: 0.9em;
+	  margin-bottom: 10px;
+	}
 }
   </style>
 </head>
@@ -86,25 +108,53 @@
     <button id="eraseCompetitors" disabled>Reset All Data</button>
     <button id='adminMode'> Admin Mode </button>
   </div>
-  
-  <div id="teamPointsDisplay"></div>
-  
-  <h2>Record</h2>
-  <table id="competitorsTable">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Name</th>
-        <th>Team</th>
-        <th>Wins</th>
-        <th>Losses</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Competitor rows will be inserted here -->
-    </tbody>
-  </table>
-  
+ 
+  <div class='content-container'> 
+    <div id="roster-container"> 
+      <div id="teamPointsDisplay"></div>
+      <h2>Record</h2>
+      <table id="competitorsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Team</th>
+            <th>Wins</th>
+            <th>Losses</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Competitor rows will be inserted here -->
+        </tbody>
+      </table>
+    </div> <!-- This is the division for the roster -->
+
+    <div class="info-container">
+      <h2> Information </h2>
+	  <div id="infoText">
+        <!-- <p> How to use this software <p> -->
+        <ul>
+          <li> Manually add competitors by entering their name and team (optional) into the corresponding entries, then press 'Add Competitor.' </li>
+			<ul> If you have regulars, saving a roster, then loading it and wiping scores might be faster.</ul>
+          <li> Once all competitors are added, you may press 'Begin Competition' to generate the first round of pairings.</li>
+          <li> Select a winner for each match up during the round. Once the round is complete, 
+			press 'Generate Next Round' and the scores will be logged as the next round is generated.</li>
+          <li> The 'Record' can be saved and then loaded at a later date from your device at any time. </li>
+			<ul>Note, this will not save the results of current pairings that have not been finalized. </ul>
+          <li> Once all competitors have lost twice (except the victor) the match will end.</li>
+		  <li> This page does not need to be refreshed once loaded. The 'Record' is saved in the browser cache and won't be lost if the page is refreshed; however, 
+				the list of active pairings will be lost (working on fixing this). </li>
+		  <li> 'Admin Mode' wipes the list of match ups then let's the user edit the 'Record' table, competitor names and teams. 
+				User must exit admin mode before the competition can resume. </li>
+        </ul>
+	  </div>
+      <h2> Diagnostics </h2>
+      <div id="diagnostics">
+	    <!-- e.g. memory usage -->
+      </div>
+    </div>
+  </div>
+
   <div>
     <button id="beginCompetition">Begin Competition</button>
   </div>

@@ -33,6 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
   
   let currentPairings = [];
   let competitionStarted = false;
+	if (localStorage.getItem("competitionStarted") == "true") {
+		competitionStarted = true;
+	}
   let adminMode = false; // New flag
 
   // Save the competitors array to localStorage.
@@ -138,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function addSampleTeams() {
     let sampleCompetitors = [];
     let team_num = 3;
-    let comp_num = 10;
+    let comp_num = 5;
     for (let team = 1; team <= team_num; team++) {
       for (let i = 1; i <= comp_num; i++) {
         let competitorNumber = ((team - 1) * comp_num) + i;
@@ -171,8 +174,10 @@ document.addEventListener("DOMContentLoaded", () => {
       resultsDiv.innerHTML = "";
       teamPointsDisplay.innerHTML = "";
       competitionStarted = false;
+			localStorage.setItem("competitionStarted", "false");
       beginCompetitionButton.disabled = true;
       finalizeRoundButton.disabled = true;
+			clearPairings();
     }
   }
 
@@ -187,8 +192,10 @@ document.addEventListener("DOMContentLoaded", () => {
         teamPointsDisplay.innerHTML = "";
         resultsDiv.innerHTML = "";
         competitionStarted = false;
+				localStorage.setItem("competitionStarted", "false");
         beginCompetitionButton.disabled = competitors.length === 0;
         finalizeRoundButton.disabled = true;
+				clearPairings();
     }
   }
 
@@ -320,6 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Display pairings in three columns:
   // Left: pairing text; Center: select dropdown (which locks on selection);
   // Right: Unlock button.
+	/*
   function displayPairings() {
     resultsDiv.innerHTML = "";
     currentPairings = pairCompetitors();
@@ -386,7 +394,102 @@ document.addEventListener("DOMContentLoaded", () => {
       
       resultsDiv.appendChild(pairingDiv);
     });
-  }
+  } */
+
+		function displayPairings() {
+			resultsDiv.innerHTML = "";
+			console.log("Displaying pairings:", currentPairings);
+			//currentPairings = pairCompetitors();
+			//savePairings();
+			// If a saved pairing state exists, load it; otherwise compute new pairings.
+			
+			if (!loadPairings()) {
+				currentPairings = pairCompetitors();
+				savePairings();
+			} 
+			console.log("Displaying pairings:", currentPairings);
+			
+			// Optionally, shuffle the order (if desired)
+			//shuffleArray(currentPairings);
+			
+			currentPairings.forEach((pair, index) => {
+				const pairingDiv = document.createElement("div");
+				pairingDiv.className = "pairing";
+				pairingDiv.dataset.index = index;
+				
+				// Left column: pairing text.
+				const pairingText = document.createElement("div");
+				pairingText.className = "pairing-text";
+				pairingText.innerText = `${pair.comp1} vs ${pair.comp2}`;
+				pairingDiv.appendChild(pairingText);
+				
+				// Center column: select dropdown.
+				const selectContainer = document.createElement("div");
+				selectContainer.className = "pairing-select";
+				let select;
+				if (pair.comp2 !== "BYE") {
+					select = document.createElement("select");
+					select.dataset.index = index;
+					const defaultOption = document.createElement("option");
+					defaultOption.text = "Select Winner";
+					defaultOption.value = "";
+					select.appendChild(defaultOption);
+					[pair.comp1, pair.comp2].forEach(name => {
+						const option = document.createElement("option");
+						option.text = name;
+						option.value = name;
+						select.appendChild(option);
+					});
+					
+					// If a selection was previously made, restore it.
+					if (pair.selected && pair.selected !== "") {
+						select.value = pair.selected;
+						select.disabled = true;
+					}
+					
+					// When a winner is chosen, lock the dropdown, update the pairing state, and save.
+					select.addEventListener("change", function() {
+						if (this.value !== "") {
+							this.disabled = true;
+							currentPairings[index].selected = this.value;
+							savePairings();
+							unlockButton.disabled = false;
+						}
+					});
+					
+					selectContainer.appendChild(select);
+				} else {
+					selectContainer.innerText = "(BYE)";
+				}
+				pairingDiv.appendChild(selectContainer);
+				
+				// Right column: Unlock button.
+				const unlockButton = document.createElement("button");
+				unlockButton.className = "unlock-button";
+				unlockButton.innerText = "Reset";
+				if (pair.comp2 !== "BYE") {
+					// Enable unlock button only if a selection is already made.
+					unlockButton.disabled = !(pair.selected && pair.selected !== "");
+				} else {
+					unlockButton.style.display = "none";
+				}
+				unlockButton.addEventListener("click", function() {
+					const select = pairingDiv.querySelector("select");
+					if (select) {
+						select.disabled = false;
+						select.value = "";
+						// Remove the stored selection for this pairing.
+						currentPairings[index].selected = "";
+						savePairings();
+						unlockButton.disabled = true;
+					}
+				});
+				pairingDiv.appendChild(unlockButton);
+				
+				resultsDiv.appendChild(pairingDiv);
+			});
+		}
+
 
   // Finalize round.
   function finalizeRound() {
@@ -404,14 +507,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if (comp.name === loser) comp.losses += 1;
       });
     }
+
     updateCompetitorsTable();
     calcTeamPoints();
+		clearPairings();
+
     if (competitors.filter(c => c.losses < 2).length > 1) {
       displayPairings();
     } else {
       alert("Competition finished!");
       competitionStarted = false;
+			localStorage.setItem("competitionStarted", "false");
       finalizeRoundButton.disabled = true;
+			clearPairings();
     }
   }
 
@@ -439,6 +547,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!adminMode) {
       if (!confirm("Entering Admin Mode will erase current pairings. Continue?")) return;
       adminMode = true;
+			clearPairings();
       resultsDiv.innerHTML = "";
       // Disable all other buttons except admin mode.
       addButton.disabled = true;
@@ -457,6 +566,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!confirm("Exit Admin Mode? Your changes will be saved.")) return;
       // Update competitors from table edits.
       updateCompetitorsFromTable();
+			clearPairings();
       adminMode = false;
       addButton.disabled = false;
       removeButton.disabled = false;
@@ -491,6 +601,42 @@ document.addEventListener("DOMContentLoaded", () => {
     competitors = newCompetitors;
     saveCompetitors();
   }
+
+  function updateDiagnostics(){
+	const diagnostics = document.getElementById("diagnostics");
+	if (performance && performance.memory) {
+		const used = performance.memory.usedJSHeapSize;
+		const total = performance.memory.totalJSHeapSize;
+		const limit = performance.memory.jsHeapSizeLimit;
+		diagnostics.innerHTML = `<p>Used Heap: ${used.toLocaleString()} bytes</p>
+								<p>Total Heap: ${total.toLocaleString()} bytes</p>
+								<p>Heap Limit: ${limit.toLocaleString()} bytes</p>`;
+	} else {
+		diagnostics.innerHTML = `<p>Diagnostic info not available in this browser.</p>`;
+	}
+  } // end diagnostic
+
+
+	function savePairings() {
+		localStorage.setItem('currentPairings', JSON.stringify(currentPairings));
+	}
+
+	function loadPairings() {
+		const stored = localStorage.getItem('currentPairings');
+		if (stored) {
+			currentPairings = JSON.parse(stored);
+			return true;
+		}
+		return false;
+	}
+
+	function clearPairings() {
+		localStorage.removeItem('currentPairings');
+	}
+
+  // Routine Update of diagnostics!
+  setInterval(updateDiagnostics, 5000) 
+  updateDiagnostics();
 
   // --- Event Listeners ---
   addButton.addEventListener("click", () => {
@@ -528,6 +674,7 @@ document.addEventListener("DOMContentLoaded", () => {
   beginCompetitionButton.addEventListener("click", () => {
     if (competitors.length === 0) return;
     competitionStarted = true;
+		localStorage.setItem("competitionStarted", "true")
     beginCompetitionButton.disabled = true;
     finalizeRoundButton.disabled = false;
     displayPairings();
@@ -538,5 +685,7 @@ document.addEventListener("DOMContentLoaded", () => {
   calcTeamPointsButton.addEventListener("click", calcTeamPoints);
   
   updateCompetitorsTable();
+  displayPairings();
+
 });
 
