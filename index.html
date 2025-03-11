@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Doner Competition Software: Double Elimination!</title>
+  <title>Doner Competition Software</title>
   <style>
     body {
       font-family: sans-serif;
@@ -48,14 +48,26 @@
 	}
 	.roster-container {
 	}
-	.info-container{
+	.extra-info{
 	  flex-grow: 0;
 	  height: auto; 
-	  min-width: 200px;
+	  min-width: 300px;
 	  background-color: #f9f9f9;
 	  padding: 10px;
 	  border: 1px solid #ccc;
-	  margin: 50px;
+	  margin: 30px 1px 1px;
+	}
+	.extra-info h2{
+		margin-top: 0px;	
+	}
+	.info-container{
+	  flex-grow: 0;
+	  height: auto; 
+	  min-width: 250px;
+	  background-color: #f9f9f9;
+	  padding: 10px;
+	  border: 1px solid #ccc;
+	  margin: 68px 1px 1px;
 	}
 	.info-container h2 {
 	  margin-top: 0;
@@ -91,7 +103,7 @@
   <!-- The rest of your HTML remains unchanged -->
   <!-- h1>Donner Competition Software: Double Elimination!</h1 -->
   <div class="title-section">  
-    <h1>Doner Competition Software: Double Elimination!</h1>
+    <h1>Doner Competition Software</h1>
   </div>
   
   <div id="controls">
@@ -130,28 +142,17 @@
     </div> <!-- This is the division for the roster -->
 
     <div class="info-container">
-      <h2> Information </h2>
+      <h2> How to: </h2>
 	  <div id="infoText">
         <!-- <p> How to use this software <p> -->
-        <ul>
+        <ol>
           <li> Manually add competitors by entering their name and team (optional) into the corresponding entries, then press 'Add Competitor.' </li>
-			<ul> If you have regulars, saving a roster, then loading it and wiping scores might be faster.</ul>
           <li> Once all competitors are added, you may press 'Begin Competition' to generate the first round of pairings.</li>
           <li> Select a winner for each match up during the round. Once the round is complete, 
-			press 'Generate Next Round' and the scores will be logged as the next round is generated.</li>
-          <li> The 'Record' can be saved and then loaded at a later date from your device at any time. </li>
-			<ul>Note, this will not save the results of current pairings that have not been finalized. </ul>
-          <li> Once all competitors have lost twice (except the victor) the match will end.</li>
-		  <li> This page does not need to be refreshed once loaded. The 'Record' is saved in the browser cache and won't be lost if the page is refreshed; however, 
-				the list of active pairings will be lost (working on fixing this). </li>
-		  <li> 'Admin Mode' wipes the list of match ups then let's the user edit the 'Record' table, competitor names and teams. 
-				User must exit admin mode before the competition can resume. </li>
-        </ul>
+			press 'Generate Next Round.' The scores will be updated and next round generated.</li>
+          <li> The match ends when only 1 competitor remains.</li>
+        </ol>
 	  </div>
-      <h2> Diagnostics </h2>
-      <div id="diagnostics">
-	    <!-- e.g. memory usage -->
-      </div>
     </div>
   </div>
 
@@ -165,6 +166,33 @@
   </div>
   
   <button id="finalizeRound">Finalize: Generate Next Round</button>
+
+  <div class='extra-info'>
+	<h2>Extra information </h2>
+	<ol>	
+          <li> The 'Record' can be saved and then loaded at a later date from your device at any time. </li>
+		  <li> 'Admin Mode' wipes the list of match ups then let's the user edit the scores, names and teams. 
+				User must exit admin mode before the competition can resume. </li>
+		  <li> This page does not need to be refreshed once loaded. The 'Record' and pairings are saved in the 
+				browser cache so if an accidental refresh occurs, the data won't be lost. </li>
+		  <li> For convenience, the Record table can be saved onto your local machine in csv format. 
+				Saved csv's can be reloaded and resumed.</li>
+	</ol>
+	<h3> Match Up Logic</h3>
+	This code is designed to be a replacement for classic 'bracket' style competitions. 
+	This code creates matchups based on competitors' records. Those who are undefeated 
+	will only compete against those who are undefeated. Competitors with the fewest 
+	wins are mathed up first to ensure that BYE's are awarded to those who have 
+	competed the most. The logic prioritizes matching competitors that are not on the
+	same team unless there is no other viable matchup. This algorithm is not perfect 
+	and teammates will be paired sparsely. 
+
+	<ul></ul>
+    <h2> Diagnostics </h2>
+    <div id="diagnostics"> </div>
+  </div>
+
+	May the best revolver win.	
 
   <script src="main.js"></script>
 </body>
