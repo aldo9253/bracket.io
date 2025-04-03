@@ -647,7 +647,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	  });
 
 	  // Call EmailJS to send the email.
-	  emailjs.send("bracket", "template_arqbj1c", {
+	  emailjs.send("service_9p60e2f", "template_arqbj1c", {
 		subject: "Match Results",
 		message: csvContent
 	  })
