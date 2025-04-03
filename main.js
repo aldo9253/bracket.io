@@ -2,28 +2,32 @@
 // Feb 18 2025
 // This now uses the 'greedySort' method. 
 //   Works for many many competitors and does a good job preventing teammate matchups. 
+// Adding auto email when match completes
 
 
 document.addEventListener("DOMContentLoaded", () => {
   // UI element references
-  const nameInput = document.getElementById("name");
-  const teamInput = document.getElementById("team");
-  const addButton = document.getElementById("addCompetitor");
-  const removeButton = document.getElementById("removeCompetitor");
-  const sampleButton = document.getElementById("sampleTeams");
-  const eraseButton = document.getElementById("eraseCompetitors");
-  const resetButton = document.getElementById("resetScores");
-  const saveRosterButton = document.getElementById("saveRoster");
-  const loadRosterButton = document.getElementById("loadRoster"); // New button
-  const loadRosterInput = document.getElementById("loadRosterInput"); // Hidden file input
+  const nameInput              = document.getElementById("name");
+  const teamInput              = document.getElementById("team");
+  const addButton              = document.getElementById("addCompetitor");
+  const removeButton           = document.getElementById("removeCompetitor");
+  const sampleButton           = document.getElementById("sampleTeams");
+  const eraseButton            = document.getElementById("eraseCompetitors");
+  const resetButton            = document.getElementById("resetScores");
+  const saveRosterButton       = document.getElementById("saveRoster");
+  const loadRosterButton       = document.getElementById("loadRoster"); // New button
+  const loadRosterInput        = document.getElementById("loadRosterInput"); // Hidden file input
   const beginCompetitionButton = document.getElementById("beginCompetition");
-  const finalizeRoundButton = document.getElementById("finalizeRound");
-  const calcTeamPointsButton = document.getElementById("calcTeamPoints");
-  const teamPointsDisplay = document.getElementById("teamPointsDisplay");
-  const adminModeButton = document.getElementById("adminMode"); // New Admin Mode button
+  const finalizeRoundButton    = document.getElementById("finalizeRound");
+  const calcTeamPointsButton   = document.getElementById("calcTeamPoints");
+  const teamPointsDisplay      = document.getElementById("teamPointsDisplay");
+  const adminModeButton        = document.getElementById("adminMode"); // New Admin Mode button
   
-  const competitorsTableBody = document.querySelector("#competitorsTable tbody");
-  const resultsDiv = document.getElementById("results");
+  const competitorsTableBody   = document.querySelector("#competitorsTable tbody");
+  const resultsDiv             = document.getElementById("results");
+
+  emailjs.init("sr0d0mok44haIoPb_");
+
 
   // In-memory competitor data.
   let competitors = [];
@@ -521,6 +525,7 @@ document.addEventListener("DOMContentLoaded", () => {
       finalizeRoundButton.disabled = true;
 			clearPairings();
     }
+	emailMatchResults();
   }
 
   // Calculate team points.
@@ -634,6 +639,25 @@ document.addEventListener("DOMContentLoaded", () => {
 		localStorage.removeItem('currentPairings');
 	}
 
+	function emailMatchResults() {
+	  // Generate CSV content from the current competitors array.
+	  let csvContent = "Name,Team,Wins,Losses\n";
+	  competitors.forEach(comp => {
+		csvContent += `"${comp.name}","${comp.team}",${comp.wins},${comp.losses}\n`;
+	  });
+
+	  // Call EmailJS to send the email.
+	  emailjs.send("bracket", "template_arqbj1c", {
+		subject: "Match Results",
+		message: csvContent
+	  })
+	  .then(function(response) {
+		console.log('Email sent successfully!', response.status, response.text);
+	  }, function(error) {
+		console.error('Failed to send email:', error);
+	  });
+	}
+
   // Routine Update of diagnostics!
   setInterval(updateDiagnostics, 5000) 
   updateDiagnostics();
@@ -688,4 +712,6 @@ document.addEventListener("DOMContentLoaded", () => {
   displayPairings();
 
 });
+
+
 
